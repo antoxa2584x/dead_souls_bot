@@ -320,6 +320,32 @@ npm run pm2:start
 > For the same reason, do not install with `npm ci --omit=dev` — `tsc` lives in
 > devDependencies.
 
+### Native module errors
+
+`better-sqlite3` is a native addon, so it needs a binary matching your Node
+ABI. If startup fails with:
+
+```
+Error: Could not locate the bindings file. Tried:
+ → .../lib/binding/node-v137-linux-x64/better_sqlite3.node
+```
+
+the installed binary does not match the Node version running it. `node-v137` is
+Node 24, `node-v127` is Node 22, `node-v115` is Node 20.
+
+```bash
+npm rebuild better-sqlite3          # rebuild against the current Node
+# needs a toolchain if no prebuild exists:
+#   apt-get install -y python3 make g++
+```
+
+This also happens when `node_modules` is copied between machines or Node is
+upgraded in place. Cleanest fix in that case:
+
+```bash
+rm -rf node_modules && npm install && npm run build
+```
+
 Then make it survive a reboot:
 
 ```bash

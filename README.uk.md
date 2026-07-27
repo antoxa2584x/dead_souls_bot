@@ -323,6 +323,32 @@ npm run pm2:start
 > З тієї ж причини не встановлюйте залежності через `npm ci --omit=dev` —
 > `tsc` міститься саме в devDependencies.
 
+### Помилки нативного модуля
+
+`better-sqlite3` — це нативний модуль, тож йому потрібен бінарний файл, що
+відповідає ABI вашого Node. Якщо запуск завершується помилкою:
+
+```
+Error: Could not locate the bindings file. Tried:
+ → .../lib/binding/node-v137-linux-x64/better_sqlite3.node
+```
+
+означає, що встановлений бінарний файл не відповідає версії Node. `node-v137` —
+це Node 24, `node-v127` — Node 22, `node-v115` — Node 20.
+
+```bash
+npm rebuild better-sqlite3          # перезібрати під поточний Node
+# якщо готового бінарника немає, знадобиться компілятор:
+#   apt-get install -y python3 make g++
+```
+
+Це також трапляється, коли теку `node_modules` копіюють між машинами або
+оновлюють Node на місці. Найнадійніше рішення в такому разі:
+
+```bash
+rm -rf node_modules && npm install && npm run build
+```
+
 Щоб бот запускався після перезавантаження:
 
 ```bash

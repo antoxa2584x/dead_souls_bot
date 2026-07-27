@@ -20,7 +20,7 @@
     "pm2:status": "pm2 status dead-souls"
   },
   "dependencies": {
-    "better-sqlite3": "^11.5.0",
+    "better-sqlite3": "^12.11.1",
     "dotenv": "^16.4.7",
     "grammy": "^1.44.0"
   },
