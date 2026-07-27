@@ -297,10 +297,31 @@ npm start
 
 ## 🔁 Запуск через PM2
 
+Розгортання з чистого клону — **теку `dist/` не додано до репозиторію, тому
+спершу обов'язково зберіть проєкт**:
+
 ```bash
-npm install -g pm2         # один раз
-npm run pm2:start          # збирає проєкт і запускає під PM2
+git clone git@github.com:antoxa2584x/dead_souls_bot.git
+cd dead_souls_bot
+
+npm install                # потрібні devDependencies: для збірки використовується tsc
+cp .env.example .env       # потім впишіть BOT_TOKEN
+npm run build              # створює dist/
+
+npm install -g pm2
+npm run pm2:start
 ```
+
+> ⚠️ Використовуйте `npm run pm2:start`, а **не** `pm2 start ecosystem.config.cjs`.
+> npm-скрипт спочатку збирає проєкт; PM2 самостійно лише запускає `dist/index.js`,
+> і на незібраному клоні це завершується помилкою:
+>
+> ```
+> Error: Cannot find module '.../dist/index.js'
+> ```
+>
+> З тієї ж причини не встановлюйте залежності через `npm ci --omit=dev` —
+> `tsc` міститься саме в devDependencies.
 
 Щоб бот запускався після перезавантаження:
 

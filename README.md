@@ -295,10 +295,30 @@ Run `/status` in the group to confirm everything is wired up correctly.
 
 ## 🔁 Running with PM2
 
+Deploying from a fresh clone — **`dist/` is gitignored, so you must build first**:
+
 ```bash
-npm install -g pm2         # once
-npm run pm2:start          # builds, then starts under PM2
+git clone git@github.com:antoxa2584x/dead_souls_bot.git
+cd dead_souls_bot
+
+npm install                # devDependencies required: the build needs tsc
+cp .env.example .env       # then edit BOT_TOKEN
+npm run build              # creates dist/
+
+npm install -g pm2
+npm run pm2:start
 ```
+
+> ⚠️ Use `npm run pm2:start`, **not** `pm2 start ecosystem.config.cjs`. The npm
+> script builds first; PM2 on its own only runs `dist/index.js`, and on an
+> unbuilt checkout that fails with:
+>
+> ```
+> Error: Cannot find module '.../dist/index.js'
+> ```
+>
+> For the same reason, do not install with `npm ci --omit=dev` — `tsc` lives in
+> devDependencies.
 
 Then make it survive a reboot:
 
