@@ -294,6 +294,7 @@ check('over target', bar(150, 100, 10), '██████████');
 console.log('\n— migration —');
 const { db } = await import('../src/db/index.js');
 const { migrate } = await import('../src/db/migrate.js');
+const runMigrate = () => migrate(db);
 const cols = () =>
   (db.prepare('PRAGMA table_info(chat_settings)').all() as Array<{ name: string }>)
     .map((c) => c.name)
@@ -301,10 +302,10 @@ const cols = () =>
 // Simulate a database created before dead_after_days existed.
 db.exec('ALTER TABLE chat_settings DROP COLUMN dead_after_days');
 check('column dropped', cols(), ['announce_ach', 'chat_id', 'lang']);
-migrate();
+runMigrate();
 const FULL = ['announce_ach', 'chat_id', 'dead_after_days', 'lang'];
 check('migration restores the column', cols(), FULL);
-migrate();
+runMigrate();
 check('migration is idempotent', cols(), FULL);
 
 console.log('\n— forget —');

@@ -2,7 +2,6 @@ import { Bot, GrammyError, HttpError } from 'grammy';
 import type { LanguageCode } from 'grammy/types';
 import { config } from './config.js';
 import { closeDb } from './db/index.js';
-import { migrate } from './db/migrate.js';
 import { LOCALES, dictFor, type Dict } from './i18n/index.js';
 import { registerMessageHandlers } from './handlers/messages.js';
 import { registerMemberHandlers } from './handlers/members.js';
@@ -28,8 +27,6 @@ const ALLOWED_UPDATES = [
   'message_reaction',
   'callback_query',
 ] as const;
-
-migrate();
 
 const bot = new Bot(config.botToken);
 
