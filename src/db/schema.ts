@@ -66,6 +66,13 @@ CREATE TABLE IF NOT EXISTS reactions (
 
 CREATE INDEX IF NOT EXISTS idx_reactions_user_day ON reactions (chat_id, user_id, day);
 
+-- Per-chat overrides. NULL means "fall back to the value from .env".
+CREATE TABLE IF NOT EXISTS chat_settings (
+  chat_id         INTEGER PRIMARY KEY,
+  lang            TEXT,
+  dead_after_days INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL

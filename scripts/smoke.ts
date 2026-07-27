@@ -14,8 +14,14 @@ rmSync(`${DB}-wal`, { force: true });
 rmSync(`${DB}-shm`, { force: true });
 
 const q = await import('../src/db/queries.js');
-const { dayKey, nowSeconds } = await import('../src/time.js');
+const { dayKey, humanSince, nowSeconds } = await import('../src/time.js');
 const { parseRange, rangeDays } = await import('../src/commands/range.js');
+const { LOCALES, dictFor } = await import('../src/i18n/index.js');
+const { ukPlural } = await import('../src/i18n/plural.js');
+const settings = await import('../src/settings.js');
+
+const UK = dictFor('uk');
+const EN = dictFor('en');
 
 const CHAT = -1001234567890;
 const now = nowSeconds();
@@ -75,7 +81,7 @@ function check(label: string, actual: unknown, expected: unknown): void {
 }
 
 console.log('\n— leaderboard, last 7 days —');
-const week = parseRange('week');
+const week = parseRange('week', UK);
 const board = q.leaderboard(CHAT, week.sinceDay);
 check('top poster is Alice', board[0]?.username, 'alice');
 check('Alice 7d messages', board[0]?.msgs, 35);
@@ -96,7 +102,7 @@ check('Bob streak', q.currentStreak(CHAT, 2, dayKey(now)), 3);
 check('Carol streak is broken', q.currentStreak(CHAT, 3, dayKey(now)), 0);
 
 console.log('\n— all-time —');
-const all = parseRange('all');
+const all = parseRange('all', UK);
 check('Carol all-time messages', q.userTotals(CHAT, 3, all.sinceDay).msgs, 8);
 check('Eve all-time messages', q.userTotals(CHAT, 5, all.sinceDay).msgs, 0);
 
@@ -129,6 +135,75 @@ console.log('\n— lookups —');
 check('find by username', q.findUserByUsername('@ALICE')?.user_id, 1);
 check('last message kind', q.lastMessage(CHAT, 2)?.kind, 'text');
 check('roster coverage', q.rosterCoverage(CHAT), { tracked: 5, confirmed: 5 });
+
+console.log('\n— ukrainian plurals —');
+const dayForm = (n: number) => ukPlural(n, 'день', 'дні', 'днів');
+check('1 день', dayForm(1), 'день');
+check('2 дні', dayForm(2), 'дні');
+check('5 днів', dayForm(5), 'днів');
+check('11 днів (exception)', dayForm(11), 'днів');
+check('14 днів (exception)', dayForm(14), 'днів');
+check('21 день', dayForm(21), 'день');
+check('22 дні', dayForm(22), 'дні');
+check('25 днів', dayForm(25), 'днів');
+check('101 день', dayForm(101), 'день');
+check('112 днів (exception)', dayForm(112), 'днів');
+
+console.log('\n— locale parity —');
+function keyPaths(obj: unknown, prefix = ''): string[] {
+  if (obj === null || typeof obj !== 'object') return [prefix];
+  return Object.entries(obj as Record<string, unknown>).flatMap(([k, v]) =>
+    keyPaths(v, prefix ? `${prefix}.${k}` : k),
+  );
+}
+const ukKeys = keyPaths(UK).sort();
+const enKeys = keyPaths(EN).sort();
+check('locales expose identical key paths', enKeys, ukKeys);
+check('both locales registered', Object.keys(LOCALES).sort(), ['en', 'uk']);
+check('uk is the default locale', dictFor(undefined).code, 'uk');
+check('unknown code falls back to default', dictFor('de').code, 'uk');
+
+console.log('\n— localised strings —');
+check('uk range label', parseRange('week', UK).label, 'останні 7 днів');
+check('en range label', parseRange('week', EN).label, 'last 7 days');
+check('uk one-day range', parseRange('1', UK).label, 'останній 1 день');
+check('uk two-day range', parseRange('2', UK).label, 'останні 2 дні');
+check('uk five-day range', parseRange('5', UK).label, 'останні 5 днів');
+check('uk 21-day range (adjective agrees)', parseRange('21', UK).label, 'останній 21 день');
+check('uk ago', humanSince(now - 3 * DAY - 3600, UK.ago), '3 дні 1 год тому');
+check('en ago', humanSince(now - 3 * DAY - 3600, EN.ago), '3d 1h ago');
+check('uk just now', humanSince(now, UK.ago), 'щойно');
+check('uk message kind', UK.kinds['sticker'], 'стікер');
+check('en message kind', EN.kinds['sticker'], 'sticker');
+check('kind maps cover the same set', Object.keys(EN.kinds).sort(), Object.keys(UK.kinds).sort());
+
+console.log('\n— per-chat settings —');
+check('lang defaults to uk', settings.chatLang(CHAT), 'uk');
+check('threshold defaults to env value', settings.chatDeadAfterDays(CHAT), 14);
+settings.updateLang(CHAT, 'en');
+check('lang override applied', settings.chatLang(CHAT), 'en');
+check('lang override persisted', q.getChatLang(CHAT), 'en');
+settings.updateDeadAfterDays(CHAT, 30);
+check('threshold override applied', settings.chatDeadAfterDays(CHAT), 30);
+check('changing threshold kept lang', settings.chatLang(CHAT), 'en');
+settings.updateLang(CHAT, 'uk');
+check('changing lang kept threshold', settings.chatDeadAfterDays(CHAT), 30);
+check('other chats unaffected', settings.chatLang(-999), 'uk');
+
+console.log('\n— migration —');
+const { db } = await import('../src/db/index.js');
+const { migrate } = await import('../src/db/migrate.js');
+const cols = () =>
+  (db.prepare('PRAGMA table_info(chat_settings)').all() as Array<{ name: string }>)
+    .map((c) => c.name)
+    .sort();
+// Simulate a database created before dead_after_days existed.
+db.exec('ALTER TABLE chat_settings DROP COLUMN dead_after_days');
+check('column dropped', cols(), ['chat_id', 'lang']);
+migrate();
+check('migration restores the column', cols(), ['chat_id', 'dead_after_days', 'lang']);
+migrate();
+check('migration is idempotent', cols(), ['chat_id', 'dead_after_days', 'lang']);
 
 console.log('\n— forget —');
 q.forgetUser(CHAT, 1);

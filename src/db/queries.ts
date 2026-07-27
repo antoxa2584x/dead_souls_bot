@@ -484,6 +484,41 @@ export function trackingSince(chatId: number): number {
   return (trackingSinceStmt.get(chatId) as { ts: number | null }).ts ?? nowSeconds();
 }
 
+export interface ChatSettings {
+  lang: string | null;
+  dead_after_days: number | null;
+}
+
+const getChatSettingsStmt = db.prepare(
+  `SELECT lang, dead_after_days FROM chat_settings WHERE chat_id = ?`,
+);
+
+export function getChatSettings(chatId: number): ChatSettings | undefined {
+  return getChatSettingsStmt.get(chatId) as ChatSettings | undefined;
+}
+
+export function getChatLang(chatId: number): string | undefined {
+  return getChatSettings(chatId)?.lang ?? undefined;
+}
+
+const setChatLangStmt = db.prepare(`
+  INSERT INTO chat_settings (chat_id, lang) VALUES (?, ?)
+  ON CONFLICT(chat_id) DO UPDATE SET lang = excluded.lang
+`);
+
+export function setChatLang(chatId: number, lang: string): void {
+  setChatLangStmt.run(chatId, lang);
+}
+
+const setDeadAfterDaysStmt = db.prepare(`
+  INSERT INTO chat_settings (chat_id, dead_after_days) VALUES (?, ?)
+  ON CONFLICT(chat_id) DO UPDATE SET dead_after_days = excluded.dead_after_days
+`);
+
+export function setDeadAfterDays(chatId: number, days: number): void {
+  setDeadAfterDaysStmt.run(chatId, days);
+}
+
 const forgetUserTx = db.transaction((chatId: number, userId: number) => {
   db.prepare(`DELETE FROM messages  WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);
   db.prepare(`DELETE FROM reactions WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);

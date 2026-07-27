@@ -1,12 +1,16 @@
 import { Bot, GrammyError, HttpError } from 'grammy';
+import type { LanguageCode } from 'grammy/types';
 import { config } from './config.js';
 import { closeDb } from './db/index.js';
+import { migrate } from './db/migrate.js';
+import { LOCALES, dictFor, type Dict } from './i18n/index.js';
 import { registerMessageHandlers } from './handlers/messages.js';
 import { registerMemberHandlers } from './handlers/members.js';
 import { registerReactionHandlers } from './handlers/reactions.js';
 import { registerStatsCommands } from './commands/stats.js';
 import { registerProfileCommands } from './commands/profile.js';
 import { registerDeadCommand } from './commands/dead.js';
+import { registerSettingsCommand } from './commands/settings.js';
 import { registerMiscCommands } from './commands/misc.js';
 
 /**
@@ -20,7 +24,10 @@ const ALLOWED_UPDATES = [
   'chat_member',
   'my_chat_member',
   'message_reaction',
+  'callback_query',
 ] as const;
+
+migrate();
 
 const bot = new Bot(config.botToken);
 
@@ -32,6 +39,7 @@ registerReactionHandlers(bot);
 registerStatsCommands(bot);
 registerProfileCommands(bot);
 registerDeadCommand(bot);
+registerSettingsCommand(bot);
 registerMiscCommands(bot);
 
 bot.catch((err) => {
@@ -46,19 +54,34 @@ bot.catch((err) => {
   }
 });
 
+function commandList(d: Dict) {
+  return [
+    { command: 'stats', description: d.commands.stats },
+    { command: 'top', description: d.commands.top },
+    { command: 'me', description: d.commands.me },
+    { command: 'last', description: d.commands.last },
+    { command: 'when', description: d.commands.when },
+    { command: 'dead', description: d.commands.dead },
+    { command: 'settings', description: d.commands.settings },
+    { command: 'status', description: d.commands.status },
+    { command: 'help', description: d.commands.help },
+  ];
+}
+
+async function publishCommands(): Promise<void> {
+  // The list without a language_code is the fallback for every client.
+  await bot.api.setMyCommands(commandList(dictFor(config.defaultLang)));
+
+  for (const [code, locale] of Object.entries(LOCALES)) {
+    await bot.api.setMyCommands(commandList(locale), {
+      language_code: code as LanguageCode,
+    });
+  }
+}
+
 async function main(): Promise<void> {
   const me = await bot.api.getMe();
-
-  await bot.api.setMyCommands([
-    { command: 'stats', description: 'Group activity overview' },
-    { command: 'top', description: 'Leaderboard of most active members' },
-    { command: 'me', description: 'Your stats (or reply to someone for theirs)' },
-    { command: 'last', description: 'When someone last posted' },
-    { command: 'when', description: 'Hour-of-day activity chart' },
-    { command: 'dead', description: 'Members who have gone quiet' },
-    { command: 'status', description: 'What the bot can currently see' },
-    { command: 'help', description: 'Show all commands' },
-  ]);
+  await publishCommands();
 
   console.log(`starting as @${me.username} (id ${me.id})`);
   if (!me.can_read_all_group_messages) {
@@ -68,7 +91,9 @@ async function main(): Promise<void> {
         '    to the group. Promoting it to admin also grants full message access.',
     );
   }
-  console.log(`timezone=${config.timezone} db=${config.dbPath}`);
+  console.log(
+    `lang=${config.defaultLang} timezone=${config.timezone} db=${config.dbPath}`,
+  );
 
   await bot.start({
     allowed_updates: [...ALLOWED_UPDATES],

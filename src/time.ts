@@ -32,16 +32,25 @@ export function dayKeyDaysAgo(n: number): string {
   return dayKey(nowSeconds() - n * 86400);
 }
 
-/** Human-readable gap, e.g. "3d 4h ago" or "just now". */
-export function humanSince(tsSeconds: number): string {
+/** Localised "time ago" strings; supplied by the caller's dictionary. */
+export interface AgoStrings {
+  justNow: string;
+  minutes: (m: number) => string;
+  hoursMinutes: (h: number, m: number) => string;
+  daysHours: (d: number, h: number) => string;
+  monthsDays: (mo: number, d: number) => string;
+}
+
+/** Human-readable gap, e.g. "3d 4h ago" / "3 дні 4 год тому". */
+export function humanSince(tsSeconds: number, ago: AgoStrings): string {
   const delta = Math.max(0, nowSeconds() - tsSeconds);
-  if (delta < 60) return 'just now';
+  if (delta < 60) return ago.justNow;
   const minutes = Math.floor(delta / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return ago.minutes(minutes);
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ${minutes % 60}m ago`;
+  if (hours < 24) return ago.hoursMinutes(hours, minutes % 60);
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ${hours % 24}h ago`;
+  if (days < 30) return ago.daysHours(days, hours % 24);
   const months = Math.floor(days / 30);
-  return `${months}mo ${days % 30}d ago`;
+  return ago.monthsDays(months, days % 30);
 }

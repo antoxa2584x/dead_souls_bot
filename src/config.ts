@@ -24,10 +24,13 @@ try {
   throw new Error(`TZ_NAME is not a valid IANA timezone: ${timezone}`);
 }
 
+const defaultLang = (process.env.DEFAULT_LANG ?? 'uk').toLowerCase();
+
 export const config = {
   botToken: required('BOT_TOKEN'),
   dbPath: process.env.DB_PATH ?? './data/dead_souls.db',
   timezone,
+  defaultLang,
   deadAfterDays: Number(process.env.DEAD_AFTER_DAYS ?? 14),
   allowedChatIds: idList('ALLOWED_CHAT_IDS'),
   adminUserIds: idList('ADMIN_USER_IDS'),
