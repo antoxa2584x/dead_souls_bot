@@ -484,13 +484,187 @@ export function trackingSince(chatId: number): number {
   return (trackingSinceStmt.get(chatId) as { ts: number | null }).ts ?? nowSeconds();
 }
 
+// ---------------------------------------------------------- player stats
+
+export interface RawPlayerStats {
+  msgs: number;
+  longest_msg: number | null;
+  replies: number | null;
+  edited: number | null;
+  night: number | null;
+  early: number | null;
+  active_days: number;
+  first_ts: number | null;
+  last_ts: number | null;
+}
+
+const rawPlayerStatsStmt = db.prepare(`
+  SELECT COUNT(*)                              AS msgs,
+         MAX(char_len)                         AS longest_msg,
+         SUM(reply_to_user_id IS NOT NULL)     AS replies,
+         SUM(edited_ts IS NOT NULL)            AS edited,
+         SUM(hour BETWEEN 0 AND 4)             AS night,
+         SUM(hour BETWEEN 5 AND 7)             AS early,
+         COUNT(DISTINCT day)                   AS active_days,
+         MIN(ts)                               AS first_ts,
+         MAX(ts)                               AS last_ts
+  FROM messages
+  WHERE chat_id = ? AND user_id = ? AND ${REAL_MESSAGE}
+`);
+
+export function rawPlayerStats(chatId: number, userId: number): RawPlayerStats {
+  return rawPlayerStatsStmt.get(chatId, userId) as RawPlayerStats;
+}
+
+const bestDayStmt = db.prepare(`
+  SELECT MAX(n) AS best FROM (
+    SELECT COUNT(*) AS n FROM messages
+    WHERE chat_id = ? AND user_id = ? AND ${REAL_MESSAGE}
+    GROUP BY day
+  )
+`);
+
+export function bestDayCount(chatId: number, userId: number): number {
+  return (bestDayStmt.get(chatId, userId) as { best: number | null }).best ?? 0;
+}
+
+const maxReactionsOnMessageStmt = db.prepare(`
+  SELECT MAX(c) AS best FROM (
+    SELECT COUNT(*) AS c
+    FROM reactions r
+    JOIN messages m ON m.chat_id = r.chat_id AND m.msg_id = r.msg_id
+    WHERE r.chat_id = ? AND m.user_id = ?
+    GROUP BY r.msg_id
+  )
+`);
+
+export function maxReactionsOnMessage(chatId: number, userId: number): number {
+  return (maxReactionsOnMessageStmt.get(chatId, userId) as { best: number | null }).best ?? 0;
+}
+
+const bookendsStmt = db.prepare(`
+  SELECT COALESCE(SUM(rn_first = 1), 0) AS firsts,
+         COALESCE(SUM(rn_last  = 1), 0) AS lasts
+  FROM (
+    SELECT user_id,
+           ROW_NUMBER() OVER (PARTITION BY day ORDER BY ts ASC,  msg_id ASC)  AS rn_first,
+           ROW_NUMBER() OVER (PARTITION BY day ORDER BY ts DESC, msg_id DESC) AS rn_last
+    FROM messages
+    WHERE chat_id = ? AND user_id IS NOT NULL AND ${REAL_MESSAGE}
+  )
+  WHERE user_id = ?
+`);
+
+/** How often this user opened, and closed, a day of conversation. */
+export function dayBookends(chatId: number, userId: number): { firsts: number; lasts: number } {
+  return bookendsStmt.get(chatId, userId) as { firsts: number; lasts: number };
+}
+
+const daysAtTopStmt = db.prepare(`
+  SELECT COUNT(*) AS n FROM (
+    SELECT day, user_id,
+           ROW_NUMBER() OVER (PARTITION BY day ORDER BY COUNT(*) DESC, user_id ASC) AS rn
+    FROM messages
+    WHERE chat_id = ? AND user_id IS NOT NULL AND ${REAL_MESSAGE}
+    GROUP BY day, user_id
+  )
+  WHERE user_id = ? AND rn = 1
+`);
+
+/** Days on which this user was the single most active poster. */
+export function daysAtTop(chatId: number, userId: number): number {
+  return (daysAtTopStmt.get(chatId, userId) as { n: number }).n;
+}
+
+const allActiveDaysStmt = db.prepare(`
+  SELECT DISTINCT day FROM messages
+  WHERE chat_id = ? AND user_id = ? AND ${REAL_MESSAGE}
+  ORDER BY day ASC
+`);
+
+export function allActiveDays(chatId: number, userId: number): string[] {
+  return (allActiveDaysStmt.all(chatId, userId) as Array<{ day: string }>).map((r) => r.day);
+}
+
+const totalReactionsGivenStmt = db.prepare(
+  `SELECT COUNT(*) AS n FROM reactions WHERE chat_id = ? AND user_id = ?`,
+);
+const totalReactionsReceivedStmt = db.prepare(`
+  SELECT COUNT(*) AS n
+  FROM reactions r
+  JOIN messages m ON m.chat_id = r.chat_id AND m.msg_id = r.msg_id
+  WHERE r.chat_id = ? AND m.user_id = ?
+`);
+
+export function totalReactionsGiven(chatId: number, userId: number): number {
+  return (totalReactionsGivenStmt.get(chatId, userId) as { n: number }).n;
+}
+
+export function totalReactionsReceived(chatId: number, userId: number): number {
+  return (totalReactionsReceivedStmt.get(chatId, userId) as { n: number }).n;
+}
+
+const allKindCountsStmt = db.prepare(`
+  SELECT kind, COUNT(*) AS n FROM messages
+  WHERE chat_id = ? AND user_id = ? AND ${REAL_MESSAGE}
+  GROUP BY kind
+`);
+
+export function allKindCounts(chatId: number, userId: number): Record<string, number> {
+  const rows = allKindCountsStmt.all(chatId, userId) as Array<{ kind: string; n: number }>;
+  return Object.fromEntries(rows.map((r) => [r.kind, r.n]));
+}
+
+// ---------------------------------------------------------- achievements
+
+const unlockedStmt = db.prepare(
+  `SELECT ach_id, unlocked_at FROM achievements WHERE chat_id = ? AND user_id = ?`,
+);
+
+export function unlockedAchievements(chatId: number, userId: number): Map<string, number> {
+  const rows = unlockedStmt.all(chatId, userId) as Array<{
+    ach_id: string;
+    unlocked_at: number;
+  }>;
+  return new Map(rows.map((r) => [r.ach_id, r.unlocked_at]));
+}
+
+const insertUnlockStmt = db.prepare(`
+  INSERT INTO achievements (chat_id, user_id, ach_id, unlocked_at)
+  VALUES (?, ?, ?, ?)
+  ON CONFLICT DO NOTHING
+`);
+
+export const recordUnlocks = db.transaction(
+  (chatId: number, userId: number, ids: string[], ts: number) => {
+    for (const id of ids) insertUnlockStmt.run(chatId, userId, id, ts);
+  },
+);
+
+const activePlayersStmt = db.prepare(`
+  SELECT user_id, COUNT(*) AS msgs
+  FROM messages
+  WHERE chat_id = ? AND user_id IS NOT NULL AND ${REAL_MESSAGE}
+  GROUP BY user_id
+  ORDER BY msgs DESC
+  LIMIT ?
+`);
+
+/** Users worth scoring for the hall of fame, busiest first. */
+export function activePlayers(chatId: number, limit: number): number[] {
+  return (activePlayersStmt.all(chatId, limit) as Array<{ user_id: number }>).map(
+    (r) => r.user_id,
+  );
+}
+
 export interface ChatSettings {
   lang: string | null;
   dead_after_days: number | null;
+  announce_ach: number | null;
 }
 
 const getChatSettingsStmt = db.prepare(
-  `SELECT lang, dead_after_days FROM chat_settings WHERE chat_id = ?`,
+  `SELECT lang, dead_after_days, announce_ach FROM chat_settings WHERE chat_id = ?`,
 );
 
 export function getChatSettings(chatId: number): ChatSettings | undefined {
@@ -519,10 +693,20 @@ export function setDeadAfterDays(chatId: number, days: number): void {
   setDeadAfterDaysStmt.run(chatId, days);
 }
 
+const setAnnounceAchStmt = db.prepare(`
+  INSERT INTO chat_settings (chat_id, announce_ach) VALUES (?, ?)
+  ON CONFLICT(chat_id) DO UPDATE SET announce_ach = excluded.announce_ach
+`);
+
+export function setAnnounceAch(chatId: number, on: boolean): void {
+  setAnnounceAchStmt.run(chatId, on ? 1 : 0);
+}
+
 const forgetUserTx = db.transaction((chatId: number, userId: number) => {
-  db.prepare(`DELETE FROM messages  WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);
-  db.prepare(`DELETE FROM reactions WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);
-  db.prepare(`DELETE FROM members   WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);
+  db.prepare(`DELETE FROM messages     WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);
+  db.prepare(`DELETE FROM reactions    WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);
+  db.prepare(`DELETE FROM members      WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);
+  db.prepare(`DELETE FROM achievements WHERE chat_id = ? AND user_id = ?`).run(chatId, userId);
 });
 
 /** Erase everything recorded about one user in one chat. */

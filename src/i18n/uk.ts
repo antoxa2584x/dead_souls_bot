@@ -128,6 +128,8 @@ export const uk = {
 <b>/last</b> [@user] — коли людина писала востаннє
 <b>/when</b> [@user] [період] — активність за годинами
 <b>/dead</b> [днів] — учасники, які замовкли
+<b>/ach</b> [@user] — трофеї та очки
+<b>/hall</b> — зала слави
 <b>/settings</b> — меню налаштувань (мова, поріг мовчання)
 <b>/status</b> — що бот наразі бачить
 
@@ -167,10 +169,79 @@ export const uk = {
     daysHint:
       'Через скільки днів без повідомлень учасник потрапляє до /dead.',
     daysOption: (n: number) => `${n} ${day(n)}`,
+    achButton: (on: boolean) => `🏆 Сповіщення про трофеї: ${on ? 'увімк.' : 'вимк.'}`,
     saved: '✅ Збережено',
     denied: 'Лише адміністратор групи може змінювати налаштування.',
     closed: '⚙️ Налаштування закрито.',
     current: '✓ ',
+  },
+
+  ach: {
+    ui: {
+      header: (name: string, level: number) => `🎮 <b>${name}</b> · РІВЕНЬ ${level}`,
+      gamerscore: (score: number, total: number) => `🏆 Очки       ${score} / ${total}`,
+      levelBar: (into: number, need: number) => `📈 До рівня   ${into} / ${need}`,
+      maxLevel: '📈 До рівня   МАКСИМУМ',
+      completion: (got: number, total: number, pct: number) =>
+        `📊 Відкрито   ${got} / ${total} (${pct}%)`,
+      tally: (b: number, s: number, g: number, p: number) =>
+        `🥉 ${b}   🥈 ${s}   🥇 ${g}   🏆 ${p}`,
+      unlockedSection: '── ВІДКРИТО ──',
+      nextSection: '── НАЙБЛИЖЧІ ──',
+      secretName: '??? ??? ???',
+      secretDesc: 'Таємний трофей',
+      andMore: (n: number) => `…та ще ${n}`,
+      nothingYet: 'Жодного трофея. Напишіть щось — і почнеться.',
+      toastTitle: '🏆 <b>ДОСЯГНЕННЯ ВІДКРИТО</b>',
+      platinumTitle: '🏆 <b>ПЛАТИНОВИЙ ТРОФЕЙ</b>',
+      toastScore: (score: number, total: number) => `Очки: ${score} / ${total}`,
+      levelUp: (level: number) => `⬆️ <b>НОВИЙ РІВЕНЬ — ${level}</b>`,
+      hallTitle: '🏛 <b>ЗАЛА СЛАВИ</b>',
+      hallEmpty: 'Поки нікого. Трофеї з’являться, щойно почнеться активність.',
+      hallRow: '#  гравець          рів.   очки',
+    },
+    tiers: {
+      bronze: 'Бронза',
+      silver: 'Срібло',
+      gold: 'Золото',
+      platinum: 'Платина',
+    },
+    list: {
+      getting_started: { name: 'Перші кроки', desc: 'Пишіть 3 дні поспіль' },
+      regular: { name: 'Завсідник', desc: 'Пишіть 7 днів поспіль' },
+      dedicated: { name: 'Відданий справі', desc: 'Пишіть 30 днів поспіль' },
+      no_days_off: { name: 'Без вихідних', desc: 'Пишіть 100 днів поспіль' },
+      unbroken: { name: 'Незламний', desc: 'Пишіть щодня протягом року' },
+      first_hundred: { name: 'Перша сотня', desc: 'Надішліть 100 повідомлень' },
+      thousand_club: { name: 'Клуб тисячі', desc: 'Надішліть 1 000 повідомлень' },
+      ten_thousand: { name: 'П’ять цифр', desc: 'Надішліть 10 000 повідомлень' },
+      busy_day: { name: 'Гарячий день', desc: 'Надішліть 50 повідомлень за один день' },
+      personal_best: { name: 'Особистий рекорд', desc: 'Надішліть 100 повідомлень за один день' },
+      top_of_board: { name: 'На вершині', desc: 'Станьте найактивнішим за день' },
+      dominance: { name: 'Домінування', desc: 'Очоліть денний рейтинг 30 разів' },
+      night_shift: { name: 'Нічна зміна', desc: 'Надішліть 100 повідомлень між 00:00 і 05:00' },
+      early_riser: { name: 'Рання пташка', desc: 'Надішліть 100 повідомлень між 05:00 і 08:00' },
+      nocturnal: { name: 'Нічний мешканець', desc: 'Надішліть 500 повідомлень після опівночі' },
+      shutterbug: { name: 'Фотограф', desc: 'Опублікуйте 100 фото' },
+      cinematographer: { name: 'Кінооператор', desc: 'Опублікуйте 50 відео' },
+      gif_librarian: { name: 'Хранитель гіфок', desc: 'Опублікуйте 100 гіфок' },
+      wall_of_text: { name: 'Стіна тексту', desc: 'Напишіть повідомлення понад 1 000 символів' },
+      sticker_collection: { name: 'Колекція стікерів', desc: 'Надішліть 250 стікерів' },
+      on_air: { name: 'В ефірі', desc: 'Надішліть 100 голосових повідомлень' },
+      went_viral: { name: 'Вірусний пост', desc: 'Отримайте 10 реакцій на одне повідомлення' },
+      conversationalist: { name: 'Співрозмовник', desc: 'Відповідайте іншим 500 разів' },
+      crowd_pleaser: { name: 'Улюбленець публіки', desc: 'Отримайте 100 реакцій' },
+      supportive: { name: 'Група підтримки', desc: 'Поставте 250 реакцій' },
+      second_thoughts: { name: 'Друга думка', desc: 'Відредагуйте 100 повідомлень' },
+      back_from_the_dead: {
+        name: 'Повернення з того світу',
+        desc: 'Повернутися після 30 днів мовчання',
+      },
+      first_light: { name: 'Перший промінь', desc: 'Напишіть перше повідомлення дня 50 разів' },
+      last_word: { name: 'Останнє слово', desc: 'Напишіть останнє повідомлення дня 50 разів' },
+      old_guard: { name: 'Стара гвардія', desc: 'Бути тут через рік після першого повідомлення' },
+      completionist: { name: 'Мертві душі', desc: 'Відкрийте всі інші досягнення' },
+    } as Record<string, { name: string; desc: string }>,
   },
 
   kinds: {
@@ -202,6 +273,8 @@ export const uk = {
     last: 'Коли людина писала востаннє',
     when: 'Активність за годинами доби',
     dead: 'Учасники, які замовкли',
+    achievements: 'Ваші трофеї та очки',
+    hall: 'Зала слави за очками',
     settings: 'Налаштування бота',
     status: 'Що бот наразі бачить',
     help: 'Показати всі команди',

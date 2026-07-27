@@ -39,10 +39,21 @@ export function sparkline(values: number[]): string {
     .join('');
 }
 
-/** Horizontal bar of fixed width, proportional to `value / max`. */
+/**
+ * Horizontal bar of fixed width, proportional to `value / max`.
+ *
+ * A bar only fills completely when the value actually reaches the target —
+ * otherwise rounding makes 96% look finished. The same applies at the bottom:
+ * any progress at all shows at least one block.
+ */
 export function bar(value: number, max: number, width = 12): string {
-  if (max <= 0) return ' '.repeat(width);
-  const filled = Math.round((value / max) * width);
+  if (max <= 0) return '█'.repeat(width);
+  if (value >= max) return '█'.repeat(width);
+
+  let filled = Math.round((value / max) * width);
+  if (filled >= width) filled = width - 1;
+  if (filled === 0 && value > 0) filled = 1;
+
   return '█'.repeat(filled) + '░'.repeat(width - filled);
 }
 

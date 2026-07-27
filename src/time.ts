@@ -32,6 +32,16 @@ export function dayKeyDaysAgo(n: number): string {
   return dayKey(nowSeconds() - n * 86400);
 }
 
+/** The YYYY-MM-DD immediately before `day`. */
+export function previousDay(day: string): string {
+  return new Date(Date.parse(`${day}T00:00:00Z`) - 86400_000).toISOString().slice(0, 10);
+}
+
+/** Whole days between two YYYY-MM-DD keys. */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400_000);
+}
+
 /** Localised "time ago" strings; supplied by the caller's dictionary. */
 export interface AgoStrings {
   justNow: string;

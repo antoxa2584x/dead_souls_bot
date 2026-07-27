@@ -70,8 +70,21 @@ CREATE INDEX IF NOT EXISTS idx_reactions_user_day ON reactions (chat_id, user_id
 CREATE TABLE IF NOT EXISTS chat_settings (
   chat_id         INTEGER PRIMARY KEY,
   lang            TEXT,
-  dead_after_days INTEGER
+  dead_after_days INTEGER,
+  announce_ach    INTEGER
 );
+
+-- Unlock times only. Which achievements exist, and their thresholds, live in
+-- code — so the catalogue can be retuned without migrating data.
+CREATE TABLE IF NOT EXISTS achievements (
+  chat_id     INTEGER NOT NULL,
+  user_id     INTEGER NOT NULL,
+  ach_id      TEXT    NOT NULL,
+  unlocked_at INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, user_id, ach_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ach_user ON achievements (chat_id, user_id);
 
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,

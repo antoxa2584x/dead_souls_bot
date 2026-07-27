@@ -7,6 +7,8 @@ import { LOCALES, dictFor, type Dict } from './i18n/index.js';
 import { registerMessageHandlers } from './handlers/messages.js';
 import { registerMemberHandlers } from './handlers/members.js';
 import { registerReactionHandlers } from './handlers/reactions.js';
+import { registerUnlockAnnouncer } from './handlers/unlocks.js';
+import { registerAchievementCommands } from './commands/achievements.js';
 import { registerStatsCommands } from './commands/stats.js';
 import { registerProfileCommands } from './commands/profile.js';
 import { registerDeadCommand } from './commands/dead.js';
@@ -35,8 +37,11 @@ const bot = new Bot(config.botToken);
 registerMessageHandlers(bot);
 registerMemberHandlers(bot);
 registerReactionHandlers(bot);
+// After the recorder: the triggering message must already be stored.
+registerUnlockAnnouncer(bot);
 
 registerStatsCommands(bot);
+registerAchievementCommands(bot);
 registerProfileCommands(bot);
 registerDeadCommand(bot);
 registerSettingsCommand(bot);
@@ -62,6 +67,8 @@ function commandList(d: Dict) {
     { command: 'last', description: d.commands.last },
     { command: 'when', description: d.commands.when },
     { command: 'dead', description: d.commands.dead },
+    { command: 'achievements', description: d.commands.achievements },
+    { command: 'hall', description: d.commands.hall },
     { command: 'settings', description: d.commands.settings },
     { command: 'status', description: d.commands.status },
     { command: 'help', description: d.commands.help },

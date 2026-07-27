@@ -1,7 +1,14 @@
 import { InlineKeyboard, type Bot, type Context } from 'grammy';
 import { config } from '../config.js';
 import { LOCALES, dictFor, t, type Dict } from '../i18n/index.js';
-import { chatDeadAfterDays, chatLang, updateDeadAfterDays, updateLang } from '../settings.js';
+import {
+  chatAnnounceAch,
+  chatDeadAfterDays,
+  chatLang,
+  updateAnnounceAch,
+  updateDeadAfterDays,
+  updateLang,
+} from '../settings.js';
 import { requireGroup } from './guards.js';
 
 const DAY_CHOICES = [7, 14, 30, 60, 90] as const;
@@ -30,6 +37,8 @@ function rootMenu(chatId: number, d: Dict): { text: string; keyboard: InlineKeyb
       .text(d.settings.langButton(lang.name), 'cfg:lang')
       .row()
       .text(d.settings.daysButton(days), 'cfg:days')
+      .row()
+      .text(d.settings.achButton(chatAnnounceAch(chatId)), 'cfg:toggleach')
       .row()
       .text(d.settings.close, 'cfg:close'),
   };
@@ -107,6 +116,9 @@ export function registerSettingsCommand(bot: Bot<Context>): void {
     if (action === 'setlang' && value && value in LOCALES) {
       updateLang(chatId, value);
       d = t(chatId); // the menu below must render in the newly chosen language
+      toast = d.settings.saved;
+    } else if (action === 'toggleach') {
+      updateAnnounceAch(chatId, !chatAnnounceAch(chatId));
       toast = d.settings.saved;
     } else if (action === 'setdays' && value) {
       const n = Number(value);

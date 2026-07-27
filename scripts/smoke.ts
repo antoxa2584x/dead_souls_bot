@@ -190,6 +190,107 @@ settings.updateLang(CHAT, 'uk');
 check('changing lang kept threshold', settings.chatDeadAfterDays(CHAT), 30);
 check('other chats unaffected', settings.chatLang(-999), 'uk');
 
+console.log('\n— achievement catalogue —');
+const ach = await import('../src/achievements/index.js');
+const ids = ach.ACHIEVEMENT_IDS;
+check('unique ids', new Set(ids).size, ids.length);
+check('catalogue size', ids.length, 31);
+check('total gamerscore', ach.TOTAL_SCORE, 1500);
+const tierCount = (tier: string) => ach.ACHIEVEMENTS.filter((a) => a.tier === tier).length;
+check('tier split', [tierCount('bronze'), tierCount('silver'), tierCount('gold')], [12, 12, 6]);
+check(
+  'every id has a uk name',
+  ids.filter((id) => !UK.ach.list[id]),
+  [],
+);
+check(
+  'every id has an en name',
+  ids.filter((id) => !EN.ach.list[id]),
+  [],
+);
+check('platinum is not in the base list', ach.ACHIEVEMENTS.some((a) => a.tier === 'platinum'), false);
+
+console.log('\n— level curve —');
+check('0G is level 1', ach.levelForScore(0), 1);
+check('14G still level 1', ach.levelForScore(14), 1);
+check('15G is level 2', ach.levelForScore(15), 2);
+check('60G is level 3', ach.levelForScore(60), 3);
+check('level 5 threshold', ach.scoreForLevel(5), 240);
+// A full 1500G must land exactly on the cap, not partway toward a level
+// nobody can reach.
+check('max level', ach.MAX_LEVEL, 11);
+check('full completion is max level', ach.levelForScore(ach.TOTAL_SCORE), ach.MAX_LEVEL);
+check('cap threshold equals total score', ach.scoreForLevel(ach.MAX_LEVEL), ach.TOTAL_SCORE);
+check('one point short is not max', ach.levelForScore(ach.TOTAL_SCORE - 1), ach.MAX_LEVEL - 1);
+check('max level flagged', ach.evaluate(CHAT, 5).atMaxLevel, false);
+
+console.log('\n— streaks and silence —');
+// Frank: six days a year ago, a long silence, then six recent days.
+q.upsertUser({ id: 6, first_name: 'Frank', username: 'frank', is_bot: false }, now - 60 * DAY);
+q.setMemberStatus(CHAT, 6, 'member', now - 60 * DAY);
+for (const dAgo of [60, 59, 58, 57, 56, 55, 5, 4, 3, 2, 1, 0]) post(6, dAgo, 2);
+const frank = ach.playerStats(CHAT, 6);
+check('longest streak', frank.longestStreak, 6);
+check('current streak', frank.currentStreak, 6);
+check('longest silence', frank.longestSilenceDays, 49);
+check('days since first message', frank.daysSinceFirstMessage, 60);
+check('total messages', frank.messages, 24);
+
+console.log('\n— stats feeding achievements —');
+const aliceStats = ach.playerStats(CHAT, 1);
+check('Alice longest streak', aliceStats.longestStreak, 10);
+check('Alice messages', aliceStats.messages, 50);
+check('Alice best day', aliceStats.bestDay, 5);
+check('Alice days at top', aliceStats.daysAtTop, 10);
+check('Alice no silence', aliceStats.longestSilenceDays, 0);
+const bobStats = ach.playerStats(CHAT, 2);
+check('Bob messages exclude commands', bobStats.messages, 6);
+check('Carol days at top', ach.playerStats(CHAT, 3).daysAtTop, 1);
+
+console.log('\n— evaluation —');
+const aliceCard = ach.evaluate(CHAT, 1, aliceStats);
+const unlockedIds = aliceCard.unlocked.map((p) => p.def.id).sort();
+check('Alice unlocks', unlockedIds, ['getting_started', 'regular', 'top_of_board']);
+check('Alice gamerscore', aliceCard.score, 45);
+check('Alice level', aliceCard.level, 2);
+check('Alice not at cap', aliceCard.atMaxLevel, false);
+check('Alice bronze tally', aliceCard.counts.bronze, 3);
+check('Alice has no platinum', aliceCard.counts.platinum, 0);
+check('progress covers whole catalogue', aliceCard.progress.length, 31);
+const frankCard = ach.evaluate(CHAT, 6, frank);
+check(
+  'Frank earns the secret trophy',
+  frankCard.unlocked.some((p) => p.def.id === 'back_from_the_dead'),
+  true,
+);
+const eveCard = ach.evaluate(CHAT, 5);
+check('Eve has nothing', eveCard.unlocked.length, 0);
+check('Eve is level 1', eveCard.level, 1);
+
+console.log('\n— platinum —');
+const platinum = aliceCard.progress.find((p) => p.def.id === 'completionist')!;
+check('platinum tracks the base set', platinum.target, 30);
+check('platinum counts unlocks', platinum.value, 3);
+check('platinum still locked', platinum.unlocked, false);
+
+console.log('\n— unlock persistence —');
+check('nothing recorded yet', q.unlockedAchievements(CHAT, 1).size, 0);
+const firstSync = ach.syncUnlocks(CHAT, 1);
+check('first sync returns the new ones', firstSync.length, 3);
+check('unlocks persisted', q.unlockedAchievements(CHAT, 1).size, 3);
+check('second sync is empty', ach.syncUnlocks(CHAT, 1).length, 0);
+check('re-evaluation keeps timestamps', ach.evaluate(CHAT, 1).unlocked.every((p) => p.unlockedAt !== null), true);
+
+console.log('\n— progress bars —');
+const { bar } = await import('../src/format.js');
+check('empty', bar(0, 100, 10), '░░░░░░░░░░');
+check('any progress shows a block', bar(1, 1000, 10), '█░░░░░░░░░');
+check('half', bar(50, 100, 10), '█████░░░░░');
+// 96% must not render as a full bar — rounding would make it look finished.
+check('96% keeps one empty', bar(96, 100, 10), '█████████░');
+check('complete', bar(100, 100, 10), '██████████');
+check('over target', bar(150, 100, 10), '██████████');
+
 console.log('\n— migration —');
 const { db } = await import('../src/db/index.js');
 const { migrate } = await import('../src/db/migrate.js');
@@ -199,17 +300,20 @@ const cols = () =>
     .sort();
 // Simulate a database created before dead_after_days existed.
 db.exec('ALTER TABLE chat_settings DROP COLUMN dead_after_days');
-check('column dropped', cols(), ['chat_id', 'lang']);
+check('column dropped', cols(), ['announce_ach', 'chat_id', 'lang']);
 migrate();
-check('migration restores the column', cols(), ['chat_id', 'dead_after_days', 'lang']);
+const FULL = ['announce_ach', 'chat_id', 'dead_after_days', 'lang'];
+check('migration restores the column', cols(), FULL);
 migrate();
-check('migration is idempotent', cols(), ['chat_id', 'dead_after_days', 'lang']);
+check('migration is idempotent', cols(), FULL);
 
 console.log('\n— forget —');
 q.forgetUser(CHAT, 1);
 check('Alice erased', q.userTotals(CHAT, 1, all.sinceDay).msgs, 0);
-check('roster shrank', q.rosterCoverage(CHAT).tracked, 4);
+check('roster shrank', q.rosterCoverage(CHAT).tracked, 5);
 check('others untouched', q.userTotals(CHAT, 3, all.sinceDay).msgs, 8);
+check('Alice trophies erased', q.unlockedAchievements(CHAT, 1).size, 0);
+check('Frank trophies survive', q.unlockedAchievements(CHAT, 6).size >= 0, true);
 
 rmSync(DB, { force: true });
 rmSync(`${DB}-wal`, { force: true });

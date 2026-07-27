@@ -23,6 +23,7 @@ A lightweight Node.js bot that tracks per-member messaging activity — messages
 
 - [Highlights](#-highlights)
 - [Features](#-features)
+- [Trophies](#-trophies)
 - [How It Works](#-how-it-works)
 - [Bot Commands](#-bot-commands)
 - [Settings Menu](#️-settings-menu)
@@ -45,7 +46,8 @@ A lightweight Node.js bot that tracks per-member messaging activity — messages
 | 📈 **Weekly rhythm** | Messages per week, active days, current streak, and a daily sparkline. |
 | 🕒 **Hour-of-day charts** | See when the group — or one person — is actually awake. |
 | 👀 **Reactions count too** | Distinguishes a silent reader who reacts from someone genuinely gone. |
-| ⚙️ **Inline admin menu** | Language and quiet threshold configurable from buttons, no redeploy. |
+| 🏆 **31 trophies** | Bronze/Silver/Gold/Platinum with gamerscore and levels, announced as they unlock. |
+| ⚙️ **Inline admin menu** | Language, quiet threshold and trophy toasts configurable from buttons. |
 
 ---
 
@@ -97,6 +99,76 @@ A lightweight Node.js bot that tracks per-member messaging activity — messages
 
 ---
 
+## 🏆 Trophies
+
+A PS3-style trophy set scored in Xbox-360-style gamerscore: **31 trophies,
+1500G, 11 levels**. Unlocking everything lands exactly on the level cap.
+
+| Tier | Worth | Count |
+|------|-------|-------|
+| 🥉 Bronze | 15G | 12 |
+| 🥈 Silver | 30G | 12 |
+| 🥇 Gold | 100G | 6 |
+| 🏆 Platinum | 360G | 1 |
+
+The Platinum — *Dead Souls* — works like a real one: it is awarded only for
+unlocking all thirty others.
+
+<details open>
+<summary><b>The full list</b></summary>
+
+**Streaks** — Getting Started (3 days) · Regular (7) · Dedicated (30) ·
+No Days Off (100) · Unbroken (365)
+
+**Volume** — First Hundred (100 messages) · Thousand Club (1,000) ·
+Five Digits (10,000) · Busy Day (50 in a day) · Personal Best (100 in a day)
+
+**Leaderboard** — Top of the Board (be the day's most active) ·
+Dominance (top the daily board 30 times)
+
+**Body clock** — Night Shift (100 messages after midnight) ·
+Early Riser (100 between 5am and 8am) · Nocturnal (500 after midnight)
+
+**Content** — Shutterbug (100 photos) · Cinematographer (50 videos) ·
+GIF Librarian (100 GIFs) · Wall of Text (a 1,000-character message) ·
+Sticker Collection (250 stickers) · On Air (100 voice messages)
+
+**Social** — Went Viral (10 reactions on one message) ·
+Conversationalist (500 replies) · Crowd Pleaser (100 reactions received) ·
+Supportive (250 reactions given)
+
+**Habits** — Second Thoughts (100 edits) · First Light (open the day 50 times) ·
+Last Word (close the day 50 times) · Old Guard (a year since your first message) ·
+🔒 *one secret trophy*
+
+</details>
+
+Trophies are **derived from the data, not tracked incrementally** — thresholds
+live in code, and only unlock timestamps are stored. That means the catalogue
+can be retuned at any time without a migration, and a trophy earned before the
+bot knew about it is awarded the moment it is next evaluated.
+
+```
+🎮 @alice · LEVEL 7
+🏆 Score      600 / 1500
+📈 To level   60 / 195
+📊 Unlocked   16 / 31 (52%)
+🥉 6   🥈 7   🥇 3   🏆 0
+
+── CLOSEST ──
+🥈 Thousand Club · 30
+   Send 1,000 messages
+   █████████░ 960/1000 · 96%
+```
+
+Unlocks are announced in the chat as they happen, throttled to at most one
+check per member per minute. Turn the announcements off from `/settings` if
+they get noisy — `/achievements` still works.
+
+Preview the layout without a bot token: `npm run preview` (or `npm run preview -- en`).
+
+---
+
 ## 🧠 How It Works
 
 ```mermaid
@@ -129,6 +201,8 @@ flowchart LR
 | `/last [@user]` | When that person last posted. |
 | `/when [@user] [period]` | Hour-of-day activity histogram. |
 | `/dead [days]` | Members who have gone quiet. |
+| `/achievements [@user]` | Trophy card — gamerscore, level, and closest unlocks. |
+| `/hall` | Hall of fame, ranked by gamerscore. |
 | `/status` | What the bot can currently see. |
 | `/forget` | Erase your own recorded data in this chat. |
 | `/help` | Show all commands. |
@@ -167,6 +241,7 @@ These apply to this group only.
 |---------|---------|---------------|
 | 🌐 **Language** | Українська · English | `DEFAULT_LANG` |
 | 👻 **Quiet threshold** | 7 · 14 · 30 · 60 · 90 days | `DEAD_AFTER_DAYS` |
+| 🏆 **Trophy announcements** | on · off | on |
 
 Overrides are stored per chat, so one instance can serve groups in different
 languages with different thresholds.
@@ -231,6 +306,10 @@ src/
 ├─ settings.ts          # Per-chat overrides with an in-memory cache
 ├─ time.ts              # Timezone-aware day/hour bucketing
 ├─ format.ts            # Monospace tables, sparklines, bar charts
+├─ achievements/
+│  ├─ definitions.ts   # The 31-trophy catalogue and thresholds
+│  ├─ types.ts         # Tiers, gamerscore values, player stats
+│  └─ index.ts         # Evaluation, level curve, unlock persistence
 ├─ i18n/
 │  ├─ uk.ts             # Ukrainian — the reference locale
 │  ├─ en.ts             # English, typed against uk.ts
@@ -243,7 +322,8 @@ src/
 ├─ handlers/            # Message, membership and reaction recording
 └─ commands/            # stats · profile · dead · settings · misc
 scripts/
-└─ smoke.ts             # 69 assertions over synthetic traffic
+├─ smoke.ts             # 124 assertions over synthetic traffic
+└─ preview.ts           # Renders the trophy UI without a bot token
 ```
 
 **Database & migrations:** SQLite in WAL mode. On startup the bot creates any

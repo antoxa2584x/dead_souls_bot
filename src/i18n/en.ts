@@ -119,6 +119,8 @@ export const en: Dict = {
 <b>/last</b> [@user] — when someone last posted
 <b>/when</b> [@user] [period] — hour-of-day activity
 <b>/dead</b> [days] — members who have gone quiet
+<b>/ach</b> [@user] — trophies and gamerscore
+<b>/hall</b> — hall of fame
 <b>/settings</b> — settings menu (language, quiet threshold)
 <b>/status</b> — what the bot can currently see
 
@@ -157,10 +159,79 @@ I record message metadata only — never message text.`,
     daysTitle: '👻 <b>Quiet threshold</b>',
     daysHint: 'How many days without a message before someone appears in /dead.',
     daysOption: (n: number) => `${n} ${day(n)}`,
+    achButton: (on: boolean) => `🏆 Trophy announcements: ${on ? 'on' : 'off'}`,
     saved: '✅ Saved',
     denied: 'Only a group administrator can change settings.',
     closed: '⚙️ Settings closed.',
     current: '✓ ',
+  },
+
+  ach: {
+    ui: {
+      header: (name: string, level: number) => `🎮 <b>${name}</b> · LEVEL ${level}`,
+      gamerscore: (score: number, total: number) => `🏆 Score      ${score} / ${total}`,
+      levelBar: (into: number, need: number) => `📈 To level   ${into} / ${need}`,
+      maxLevel: '📈 To level   MAX',
+      completion: (got: number, total: number, pct: number) =>
+        `📊 Unlocked   ${got} / ${total} (${pct}%)`,
+      tally: (b: number, s: number, g: number, p: number) =>
+        `🥉 ${b}   🥈 ${s}   🥇 ${g}   🏆 ${p}`,
+      unlockedSection: '── UNLOCKED ──',
+      nextSection: '── CLOSEST ──',
+      secretName: '??? ??? ???',
+      secretDesc: 'Secret trophy',
+      andMore: (n: number) => `…and ${n} more`,
+      nothingYet: 'No trophies yet. Post something and the hunt begins.',
+      toastTitle: '🏆 <b>ACHIEVEMENT UNLOCKED</b>',
+      platinumTitle: '🏆 <b>PLATINUM TROPHY</b>',
+      toastScore: (score: number, total: number) => `Score: ${score} / ${total}`,
+      levelUp: (level: number) => `⬆️ <b>LEVEL UP — ${level}</b>`,
+      hallTitle: '🏛 <b>HALL OF FAME</b>',
+      hallEmpty: 'Nobody yet. Trophies appear once there is some activity.',
+      hallRow: '#  player           lv.   score',
+    },
+    tiers: {
+      bronze: 'Bronze',
+      silver: 'Silver',
+      gold: 'Gold',
+      platinum: 'Platinum',
+    },
+    list: {
+      getting_started: { name: 'Getting Started', desc: 'Post on 3 consecutive days' },
+      regular: { name: 'Regular', desc: 'Post on 7 consecutive days' },
+      dedicated: { name: 'Dedicated', desc: 'Post on 30 consecutive days' },
+      no_days_off: { name: 'No Days Off', desc: 'Post on 100 consecutive days' },
+      unbroken: { name: 'Unbroken', desc: 'Post every day for a year' },
+      first_hundred: { name: 'First Hundred', desc: 'Send 100 messages' },
+      thousand_club: { name: 'Thousand Club', desc: 'Send 1,000 messages' },
+      ten_thousand: { name: 'Five Digits', desc: 'Send 10,000 messages' },
+      busy_day: { name: 'Busy Day', desc: 'Send 50 messages in a single day' },
+      personal_best: { name: 'Personal Best', desc: 'Send 100 messages in a single day' },
+      top_of_board: { name: 'Top of the Board', desc: "Be the day's most active member" },
+      dominance: { name: 'Dominance', desc: 'Top the daily board 30 times' },
+      night_shift: { name: 'Night Shift', desc: 'Send 100 messages between midnight and 5am' },
+      early_riser: { name: 'Early Riser', desc: 'Send 100 messages between 5am and 8am' },
+      nocturnal: { name: 'Nocturnal', desc: 'Send 500 messages after midnight' },
+      shutterbug: { name: 'Shutterbug', desc: 'Post 100 photos' },
+      cinematographer: { name: 'Cinematographer', desc: 'Post 50 videos' },
+      gif_librarian: { name: 'GIF Librarian', desc: 'Post 100 GIFs' },
+      wall_of_text: { name: 'Wall of Text', desc: 'Post a message over 1,000 characters' },
+      sticker_collection: { name: 'Sticker Collection', desc: 'Post 250 stickers' },
+      on_air: { name: 'On Air', desc: 'Send 100 voice messages' },
+      went_viral: { name: 'Went Viral', desc: 'Get 10 reactions on a single message' },
+      conversationalist: { name: 'Conversationalist', desc: 'Reply to others 500 times' },
+      crowd_pleaser: { name: 'Crowd Pleaser', desc: 'Receive 100 reactions' },
+      supportive: { name: 'Supportive', desc: 'Give 250 reactions' },
+      second_thoughts: { name: 'Second Thoughts', desc: 'Edit 100 messages' },
+      back_from_the_dead: {
+        name: 'Back From the Dead',
+        desc: 'Return after 30 days of silence',
+      },
+      first_light: { name: 'First Light', desc: 'Send the first message of the day 50 times' },
+      last_word: { name: 'Last Word', desc: 'Send the last message of the day 50 times' },
+      old_guard: { name: 'Old Guard', desc: 'Still here a year after your first message' },
+      completionist: { name: 'Dead Souls', desc: 'Unlock every other achievement' },
+    },
   },
 
   kinds: {
@@ -192,6 +263,8 @@ I record message metadata only — never message text.`,
     last: 'When someone last posted',
     when: 'Hour-of-day activity chart',
     dead: 'Members who have gone quiet',
+    achievements: 'Your trophies and gamerscore',
+    hall: 'Hall of fame by gamerscore',
     settings: 'Bot settings',
     status: 'What the bot can currently see',
     help: 'Show all commands',

@@ -21,4 +21,5 @@ function ensureColumn(table: string, column: string, definition: string): void {
 export function migrate(): void {
   ensureColumn('chat_settings', 'lang', 'TEXT');
   ensureColumn('chat_settings', 'dead_after_days', 'INTEGER');
+  ensureColumn('chat_settings', 'announce_ach', 'INTEGER');
 }

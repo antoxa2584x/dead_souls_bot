@@ -1,6 +1,7 @@
 import { config } from './config.js';
 import {
   getChatSettings,
+  setAnnounceAch,
   setChatLang,
   setDeadAfterDays,
   type ChatSettings,
@@ -15,7 +16,7 @@ const cache = new Map<number, ChatSettings>();
 function load(chatId: number): ChatSettings {
   let row = cache.get(chatId);
   if (row === undefined) {
-    row = getChatSettings(chatId) ?? { lang: null, dead_after_days: null };
+    row = getChatSettings(chatId) ?? { lang: null, dead_after_days: null, announce_ach: null };
     cache.set(chatId, row);
   }
   return row;
@@ -38,4 +39,14 @@ export function updateLang(chatId: number, lang: string): void {
 export function updateDeadAfterDays(chatId: number, days: number): void {
   setDeadAfterDays(chatId, days);
   cache.set(chatId, { ...load(chatId), dead_after_days: days });
+}
+
+/** Achievement announcements are on unless a chat has turned them off. */
+export function chatAnnounceAch(chatId: number): boolean {
+  return load(chatId).announce_ach !== 0;
+}
+
+export function updateAnnounceAch(chatId: number, on: boolean): void {
+  setAnnounceAch(chatId, on);
+  cache.set(chatId, { ...load(chatId), announce_ach: on ? 1 : 0 });
 }
