@@ -1,5 +1,7 @@
 node_modules/
 dist/
 data/
+logs/
 .env
 *.log
+.pm2/

@@ -293,6 +293,54 @@ Run `/status` in the group to confirm everything is wired up correctly.
 
 ---
 
+## 🔁 Running with PM2
+
+```bash
+npm install -g pm2         # once
+npm run pm2:start          # builds, then starts under PM2
+```
+
+Then make it survive a reboot:
+
+```bash
+pm2 save                   # remember the current process list
+pm2 startup                # prints a command — run it, it installs the boot service
+```
+
+| Script | Does |
+|--------|------|
+| `npm run pm2:start` | Build, then start from `ecosystem.config.cjs` |
+| `npm run pm2:restart` | Rebuild and restart, re-reading `.env` |
+| `npm run pm2:stop` | Stop the process |
+| `npm run pm2:logs` | Tail the logs |
+| `npm run pm2:status` | Show process status |
+
+> ### ⚠️ Never run this bot in cluster mode
+>
+> Telegram permits only **one** long-polling consumer per bot token. Under
+> `pm2 start -i 2` or `exec_mode: 'cluster'`, every instance calls `getUpdates`
+> and Telegram rejects all but one with
+> `409: Conflict: terminated by other getUpdates request`. The bot flaps
+> between instances and drops updates.
+>
+> `ecosystem.config.cjs` pins `exec_mode: 'fork'` and `instances: 1` for exactly
+> this reason — do not raise them.
+
+**Notes**
+
+- The config file must stay `.cjs`. `package.json` sets `"type": "module"`, so a
+  plain `.js` ecosystem file would be parsed as ESM and fail to load.
+- `.env` is read by the app itself, relative to `cwd` — which the config pins to
+  the project directory, so PM2 can be invoked from anywhere.
+- After changing `.env`, use `pm2:restart` (it passes `--update-env`); a plain
+  `pm2 restart` may reuse the old environment.
+- Shutdown is graceful: the bot handles `SIGINT`/`SIGTERM` and closes SQLite
+  before exiting, with `kill_timeout` set to 8s to allow it.
+- Logs land in `logs/` (gitignored). Add `pm2 install pm2-logrotate` if the bot
+  runs for months.
+
+---
+
 ## 📜 License
 
 Released under the **MIT** License.

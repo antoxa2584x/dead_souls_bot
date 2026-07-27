@@ -12,7 +12,12 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "smoke": "tsx scripts/smoke.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pm2:start": "npm run build && pm2 start ecosystem.config.cjs",
+    "pm2:restart": "npm run build && pm2 restart ecosystem.config.cjs --update-env",
+    "pm2:stop": "pm2 stop dead-souls",
+    "pm2:logs": "pm2 logs dead-souls",
+    "pm2:status": "pm2 status dead-souls"
   },
   "dependencies": {
     "better-sqlite3": "^11.5.0",
